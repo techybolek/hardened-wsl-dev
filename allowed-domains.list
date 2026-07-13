@@ -137,3 +137,32 @@ demo2.alt-stars.com
 api.demo2.alt-stars.com
 
 # aidevs course platform — hub.ag3nts.org is Cloudflare-fronted; CIDRs in allowed-ips.list
+# PurtoRico ado
+prdr.visualstudio.com
+prdr.vssps.visualstudio.com
+dev.azure.com
+mcr.microsoft.com
+api.openai.com
+openrouter.ai
+api.cerebras.ai
+www.recovery.pr.gov
+dev.recovery.pr.gov
+devarcgis.recovery.pr
+# langfuse
+us.cloud.langfuse.com
+cloud.langfuse.com
+
+# deno
+deno.land
+dl.deno.land
+jsr.io
+
+#ngrok
+ngrok-agent.s3.amazonaws.com
+connect.ngrok-agent.com
+
+arxiv.org
+
+# ChatGPT / OpenAI auth (added live in-distro, backfilled to master)
+chatgpt.com
+auth.openai.com

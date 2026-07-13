@@ -39,3 +39,30 @@
 # Domain is in allowed-domains.list but edge IPs rotate; pin the /24s seen at install time.
 13.107.246.0/24
 13.107.213.0/24
+
+# Azure bx-msedge /24s fronting prdr.visualstudio.com (Azure DevOps for recovery.pr).
+# Same bx-msedge fleet as code.visualstudio.com (150.171.110.0/24) but different /24s.
+150.171.73.0/24
+150.171.74.0/24
+
+# AWS EC2 us-east-2 /24s for connect.ngrok-agent.com (ngrok tunnel servers).
+# EC2 IPs are more stable than CDN edges but still rotate; pin /24s seen at 2026-06-23.
+3.12.62.0/24
+3.16.250.0/24
+3.20.27.0/24
+3.133.228.0/24
+3.134.73.0/24
+3.136.132.0/24
+
+# AWS S3 us-west-2 /24s for ngrok-agent.s3.amazonaws.com (ngrok binary downloads).
+# S3 is NOT covered by the CloudFront live-fetch in init-firewall.sh; these are the
+# /24s resolved at 2026-06-23 — S3 us-west-2 rotates within a large pool, may need
+# updating if downloads stall. Long-term: add S3/us-west-2 to the init-firewall.sh fetch.
+52.92.144.0/24
+52.92.165.0/24
+52.92.181.0/24
+52.92.184.0/24
+52.218.176.0/24
+16.15.34.0/24
+16.15.38.0/24
+3.5.84.0/24
