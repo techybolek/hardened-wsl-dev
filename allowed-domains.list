@@ -166,3 +166,7 @@ arxiv.org
 # ChatGPT / OpenAI auth (added live in-distro, backfilled to master)
 chatgpt.com
 auth.openai.com
+
+# Vercel deployment (CDN-fronted — see README CDN-CIDR caveat; probe after reload)
+vercel.com
+api.vercel.com

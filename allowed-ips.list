@@ -42,8 +42,12 @@
 
 # Azure bx-msedge /24s fronting prdr.visualstudio.com (Azure DevOps for recovery.pr).
 # Same bx-msedge fleet as code.visualstudio.com (150.171.110.0/24) but different /24s.
+# .75/.76 added 2026-07-13: prdr.visualstudio.com and prdr.vssps.visualstudio.com
+# resolved there and were dropping SYN silently despite .73/.74 being allowed.
 150.171.73.0/24
 150.171.74.0/24
+150.171.75.0/24
+150.171.76.0/24
 
 # AWS EC2 us-east-2 /24s for connect.ngrok-agent.com (ngrok tunnel servers).
 # EC2 IPs are more stable than CDN edges but still rotate; pin /24s seen at 2026-06-23.
