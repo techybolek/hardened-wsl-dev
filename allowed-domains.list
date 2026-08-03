@@ -114,7 +114,9 @@ www.google.com
 lvxmavfakdudcurpsgoe.supabase.co
 # Recovery.pr internal services (TP backend → ADFS + DRS roles API)
 devfederation.recovery.pr
+federation.recovery.pr
 devapps06.recovery.pr
+prdrs.cor3.pr
 
 #Supabase telemetry
 eu.i.posthog.com
@@ -166,7 +168,12 @@ arxiv.org
 # ChatGPT / OpenAI auth (added live in-distro, backfilled to master)
 chatgpt.com
 auth.openai.com
+# Codex CLI installer binary host (Cloudflare-fronted — /24s in allowed-ips.list)
+releases.openai.com
 
 # Vercel deployment (CDN-fronted — see README CDN-CIDR caveat; probe after reload)
 vercel.com
 api.vercel.com
+
+# timesheet - clipboard.js
+cdnjs.cloudflare.com

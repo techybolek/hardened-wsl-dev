@@ -31,6 +31,11 @@
 104.21.80.0/24
 172.67.172.0/24
 
+# Cloudflare edge /24s fronting releases.openai.com (Codex CLI installer binaries,
+# pulled by https://chatgpt.com/codex/install.sh). Anycast — pin the /24s, not the A-records.
+172.64.144.0/24
+104.18.43.0/24
+
 # Cloudflare edge /24s fronting hub.ag3nts.org (AI agents course platform).
 104.21.63.0/24
 172.67.170.0/24
