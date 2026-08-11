@@ -7,6 +7,8 @@ description: Add (or remove) hosts/CIDRs in the wsl-dev outbound allow-list and 
 
 Edit the Windows-side master allow-list, push to the live `Ubuntu-24.04` distro, reload `init-firewall.sh`, and probe that the new hosts actually reach origin. No distro reboot required.
 
+> **Check the direction before doing anything.** This skill pushes master → live, and the push is a byte-level overwrite with no undo. Allow-list edits are often made *live in-distro first*, so the master is **not** automatically authoritative. Step 0 below is mandatory. If the user's request is directionless ("sync the firewall", "update wsl"), do not guess — diff and report, or ask. The explicit commands are `/sync-to-wsl` (push) and `/sync-from-wsl` (pull).
+
 ## Files (master copies on Windows, live copies in-distro)
 
 | Master (this repo)                  | Live (inside distro)                      | When to use                                                                 |
@@ -16,6 +18,17 @@ Edit the Windows-side master allow-list, push to the live `Ubuntu-24.04` distro,
 | `C:\work\wsl\init-firewall.sh`      | `/usr/local/sbin/init-firewall.sh`        | Live-fetched ranges (GitHub meta, AWS CloudFront/GA, Google goog.json).     |
 
 ## Steps
+
+0. **Pull the live files and diff them against the masters — before editing anything.**
+   ```powershell
+   . C:\work\wsl\wsl-transfer.ps1
+   Copy-FromDistro /usr/local/sbin/allowed-domains.list $env:TEMP\live-allowed-domains.list
+   Copy-FromDistro /usr/local/sbin/allowed-ips.list     $env:TEMP\live-allowed-ips.list
+   Copy-FromDistro /usr/local/sbin/init-firewall.sh     $env:TEMP\live-init-firewall.sh
+   git -C C:\work\WSL diff --no-index -- .\allowed-domains.list $env:TEMP\live-allowed-domains.list
+   ```
+   - Identical → continue to step 1.
+   - **Live has entries the master lacks → STOP and show the user the diff.** Those are in-distro edits that a push would destroy. Reconcile into the master (or run `/sync-from-wsl`) *first*, then continue.
 
 1. **Decide which list each entry goes in.**
    - Stable A record (api.example.com, docs site) → `allowed-domains.list`.
@@ -72,8 +85,9 @@ Edit the Windows-side master allow-list, push to the live `Ubuntu-24.04` distro,
 
 ## Don't
 
+- Don't push before step 0. A push is unrecoverable: it overwrites the live file byte-for-byte, clobbers the `/tmp` staging copy too, and `.vhdx` snapshots are typically weeks stale. There is no undo.
 - Don't add a domain to the list and stop — without step 4 (reload) it has zero effect.
-- Don't push the *live* in-distro file back to the Windows master — flow is one-way (master → live).
+- Don't assume the master is authoritative. Flow is master → live *for this skill*, but only once step 0 confirms the master is the one that's ahead. To go the other way, use `/sync-from-wsl`.
 - Don't pin individual A-records for CDN-fronted hosts (Fastly, Akamai, Cloudfront, Azure Front Door, Edgio). Always use the /24.
 - Don't skip the probe. A reload that "succeeded" but the host still 135s-times-out is the most common failure mode and the easiest to catch immediately.
 - Don't use the `\\wsl.localhost\...` UNC share, or wait out a `wsl.exe` call that's hanging — kill it (`TaskStop`) and retry with `Copy-ToDistro`.

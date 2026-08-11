@@ -36,6 +36,24 @@
 172.64.144.0/24
 104.18.43.0/24
 
+# Cloudflare edge /24s fronting fireworks.ai (site/docs). Anycast — the two
+# A-records resolved at reload time rotate; pin the /24s. Note api.fireworks.ai
+# is GCP-hosted (35.207.x) and already covered by the goog.json live fetch.
+104.18.6.0/24
+104.18.7.0/24
+
+# Cloudflare edge /24s fronting pi.dev / www.pi.dev. Anycast — pin the /24s.
+104.21.62.0/24
+172.67.221.0/24
+
+# Yahoo IMAP (imap.mail.yahoo.com → jimapinternal.imap.mail.g03.yahoodns.net).
+# Two A records live in separate Yahoo /24s and reorder per query; the pool is
+# larger than what any single resolve returns, so pin both /24s rather than the
+# A-records. Reached on 993/tcp — the OUTPUT allow rule is destination-IP only
+# and does not filter by port, so no extra port rule is needed.
+67.195.176.0/24
+69.147.112.0/24
+
 # Cloudflare edge /24s fronting hub.ag3nts.org (AI agents course platform).
 104.21.63.0/24
 172.67.170.0/24

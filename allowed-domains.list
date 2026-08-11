@@ -147,6 +147,17 @@ mcr.microsoft.com
 api.openai.com
 openrouter.ai
 api.cerebras.ai
+# Fireworks AI (inference API + site/docs)
+api.fireworks.ai
+fireworks.ai
+# pi.dev (Cloudflare-fronted — /24s in allowed-ips.list)
+pi.dev
+www.pi.dev
+# mikr.us VPS (single stable A record, Hetzner)
+srv29.mikr.us
+# Yahoo IMAP (port 993). CNAMEs into *.yahoodns.net and returns two A records in
+# different /24s that reorder per query — /24s pinned in allowed-ips.list.
+imap.mail.yahoo.com
 www.recovery.pr.gov
 dev.recovery.pr.gov
 devarcgis.recovery.pr

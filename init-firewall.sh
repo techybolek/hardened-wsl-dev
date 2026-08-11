@@ -61,43 +61,38 @@ iptables -A INPUT -p tcp --dport 2222 -j ACCEPT
 # --- Build allow-list ipset ---
 ipset create allowed-domains hash:net family inet hashsize 4096 maxelem 65536
 
+# Every producer below appends bare IPs/CIDRs here; the whole file is loaded in ONE
+# `ipset restore` at the end. Adding entries one at a time forked ~6400 ipset processes
+# and cost ~20s of CPU on its own, which delayed the DROP-to-populated window at boot.
+entries=$(mktemp)
+trap 'rm -f "$entries"' EXIT
+
 # GitHub: pull CIDRs from their meta endpoint
 log "Fetching GitHub IP ranges..."
 gh_meta=$(curl -fsSL --max-time 15 https://api.github.com/meta || echo '{}')
 echo "$gh_meta" | jq -r '
   (.web // []) + (.api // []) + (.git // []) + (.packages // []) + (.actions // [])
-  | .[]' | while read -r cidr; do
-    [ -n "$cidr" ] && ipset add allowed-domains "$cidr" 2>/dev/null || true
-done
+  | .[]' >> "$entries"
 
 # AWS CloudFront: pull current edge CIDRs from AWS's published IP-ranges document.
 # Docker Hub image blobs are served via CloudFront (production.cloudfront.docker.com),
 # and CloudFront rotates across a large global edge pool that DNS-at-startup cannot pin.
 log "Fetching AWS CloudFront IP ranges..."
 aws_ranges=$(curl -fsSL --max-time 15 https://ip-ranges.amazonaws.com/ip-ranges.json || echo '{}')
-echo "$aws_ranges" | jq -r '.prefixes[] | select(.service=="CLOUDFRONT") | .ip_prefix' \
-  | while read -r cidr; do
-    [ -n "$cidr" ] && ipset add allowed-domains "$cidr" 2>/dev/null || true
-done
+echo "$aws_ranges" | jq -r '.prefixes[] | select(.service=="CLOUDFRONT") | .ip_prefix' >> "$entries"
 
 # AWS Global Accelerator: ECR Public (public.ecr.aws) is fronted by Global Accelerator
 # anycast IPs (e.g. 99.83.x, 75.2.x). Without these, `docker pull` from public.ecr.aws
 # times out at TCP. Reuses $aws_ranges already fetched above.
 log "Fetching AWS Global Accelerator IP ranges..."
-echo "$aws_ranges" | jq -r '.prefixes[] | select(.service=="GLOBALACCELERATOR") | .ip_prefix' \
-  | while read -r cidr; do
-    [ -n "$cidr" ] && ipset add allowed-domains "$cidr" 2>/dev/null || true
-done
+echo "$aws_ranges" | jq -r '.prefixes[] | select(.service=="GLOBALACCELERATOR") | .ip_prefix' >> "$entries"
 
 # Google published IP ranges: storage.googleapis.com (and other Google services) sit
 # behind a large rotating edge pool spread across many /16s. The published list at
 # gstatic.com is reachable during the bootstrap ACCEPT window at the top of this script.
 log "Fetching Google IP ranges..."
 goog_ranges=$(curl -fsSL --max-time 15 https://www.gstatic.com/ipranges/goog.json || echo '{}')
-echo "$goog_ranges" | jq -r '.prefixes[] | .ipv4Prefix // empty' \
-  | while read -r cidr; do
-    [ -n "$cidr" ] && ipset add allowed-domains "$cidr" 2>/dev/null || true
-done
+echo "$goog_ranges" | jq -r '.prefixes[] | .ipv4Prefix // empty' >> "$entries"
 
 # Domain and direct-IP allow-lists live in sibling files alongside this script.
 # Format: one entry per line; blank lines and `#` comments are ignored. Inline
@@ -116,18 +111,28 @@ read_list() {
 }
 
 log "Loading direct IPs/CIDRs from $ips_file..."
-while IFS= read -r ip; do
-  [ -n "$ip" ] && ipset add allowed-domains "$ip" 2>/dev/null || true
-done < <(read_list "$ips_file")
+read_list "$ips_file" >> "$entries"
 
 log "Resolving allow-listed domains from $domains_file..."
-while IFS= read -r domain; do
-  [ -n "$domain" ] || continue
-  ips=$(dig +short +time=3 +tries=2 A "$domain" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
-  for ip in $ips; do
-    ipset add allowed-domains "$ip" 2>/dev/null || true
-  done
-done < <(read_list "$domains_file")
+# Resolved in parallel: sequential dig over ~105 domains cost ~35s on its own (each
+# unreachable name burns up to +time=3 x +tries=2). sshd is up in ~1s, so VS Code
+# Remote-SSH would connect into a window where OUTPUT is already DROP but the ipset
+# was still filling, and every network call it made stalled.
+read_list "$domains_file" \
+  | xargs -P 16 -I{} dig +short +time=3 +tries=2 A {} \
+  | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' >> "$entries" || true
+
+# Single batched load. -exist tolerates the duplicates that overlapping sources produce
+# (e.g. a resolved A record already covered by a published CIDR).
+#
+# The IPv4 filter is NOT cosmetic: the set is family inet, and sources like api.github.com/meta
+# mix IPv6 prefixes into the same list. `ipset restore` aborts the ENTIRE batch on the first
+# unparseable line, which would leave an empty allow-list under a DROP policy. The old
+# per-entry loop hid this because each bad add failed alone into 2>/dev/null.
+log "Loading allow-list into ipset..."
+grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/[0-9]{1,2})?$' "$entries" \
+  | sed -E 's|^|add allowed-domains |' \
+  | ipset restore -exist
 
 count=$(ipset list allowed-domains | grep -c '^[0-9]')
 log "Allow-list contains $count entries"
