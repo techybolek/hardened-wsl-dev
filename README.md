@@ -6,7 +6,7 @@ Source-of-truth files for **`Ubuntu-24.04`** (alias `wsl-dev`): a locked-down WS
 
 ## Hardening
 
-- **Outbound firewall** — `iptables` + `ipset`, default `OUTPUT=DROP`; only the allow-list is reachable.
+- **Outbound firewall** — `iptables` + `ipset`, default `OUTPUT=DROP`; only the allow-list is reachable. Blocked outbound traffic is `REJECT`ed (TCP reset / ICMP unreachable), so a non-allow-listed host fails in milliseconds with "Connection refused" instead of hanging ~130s on SYN retries.
 - **No `/mnt/c`** — Windows filesystem unmounted.
 - **No interop** — can't launch Windows `.exe` binaries.
 - **Rootless Docker** — `dockerd` runs as the user, not root.

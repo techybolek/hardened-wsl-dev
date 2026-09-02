@@ -140,9 +140,21 @@ log "Allow-list contains $count entries"
 # --- Allow outbound to allow-list ---
 iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT
 
+# --- Fail fast on blocked outbound ---
+# Without these, a non-allow-listed destination hits the default DROP policy: the SYN
+# vanishes, the kernel retries per net.ipv4.tcp_syn_retries, and the caller hangs ~130s
+# before ETIMEDOUT. Rejecting instead returns an error on the first packet, so curl/npm/
+# pip fail in milliseconds with "Connection refused" and the blocked host is obvious.
+# Appended AFTER the allow-list ACCEPT above, so only non-allowed traffic reaches them.
+iptables -A OUTPUT -p tcp -j REJECT --reject-with tcp-reset
+iptables -A OUTPUT -p udp -j REJECT --reject-with icmp-port-unreachable
+iptables -A OUTPUT -j REJECT --reject-with icmp-admin-prohibited
+
 # --- Default DROP policies ---
+# Kept as the failsafe: if the rules above are ever flushed without this script
+# rerunning, the policy still blocks rather than falling open.
 iptables -P INPUT DROP
 iptables -P FORWARD DROP
 iptables -P OUTPUT DROP
 
-log "Firewall active (default OUTPUT=DROP, allow-list applied)"
+log "Firewall active (OUTPUT allow-list applied, blocked traffic REJECTed)"

@@ -68,7 +68,7 @@ Defense-in-depth — each layer closes a different escape path:
 |---|---|---|
 | **No Windows filesystem** | `[automount] enabled = false` in `/etc/wsl.conf` | No `/mnt/c`, no DrvFs — the distro can't read Windows-side files/creds. |
 | **No interop** | `[interop] enabled = false`, `appendWindowsPath = false` | The distro can't exec Windows binaries (`powershell.exe`, `clip.exe`, `explorer.exe`, `wslview`, …). |
-| **Outbound firewall** | `iptables` + `ipset`, default `OUTPUT=DROP` | Only explicitly allow-listed destinations are reachable. Runs at boot via `init-firewall.service`. |
+| **Outbound firewall** | `iptables` + `ipset`, default `OUTPUT=DROP` + explicit `REJECT` | Only explicitly allow-listed destinations are reachable. Runs at boot via `init-firewall.service`. Blocked traffic hits a trailing `REJECT` rule (TCP reset / ICMP unreachable) so callers fail instantly rather than hanging ~130s; the `DROP` policy remains as the failsafe if rules are flushed. |
 | **Rootless Docker** | `dockerd` as the user, not root | A container breakout lands as an unprivileged user, not root. |
 | **Hardened sshd** | key-only, `127.0.0.1:2222`, single `AllowUsers` | Inbound limited to a local-only VS Code transport. |
 
