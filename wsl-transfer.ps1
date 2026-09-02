@@ -105,7 +105,10 @@ function Copy-ToDistro {
     #    Use a raw .NET process write, NOT the PS pipeline: piping a string to a native
     #    command's stdin in PS 5.1 prepends a UTF-8 BOM and appends CRLF, both of which
     #    make `base64 -d` fail. BaseStream.Write sends exactly the ASCII bytes, nothing else.
-    $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($srcAbs))
+    #    Encode and write in chunks: ReadAllBytes + ToBase64String on a large file builds a
+    #    ~1.33x string in memory and OOMs PS 5.1 well before the 2 GB .NET limit. Chunking
+    #    keeps memory flat regardless of file size. Chunk size MUST be a multiple of 3 so
+    #    each block encodes without padding except the final one.
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName              = 'wsl.exe'
     # `-i` (ignore-garbage) makes base64 skip the UTF-8 BOM that wsl.exe prepends to stdin.
@@ -113,12 +116,34 @@ function Copy-ToDistro {
     $psi.UseShellExecute       = $false
     $psi.RedirectStandardInput = $true
     $psi.RedirectStandardError = $true
-    $proc    = [System.Diagnostics.Process]::Start($psi)
-    $inBytes = [System.Text.Encoding]::ASCII.GetBytes($b64)
-    $proc.StandardInput.BaseStream.Write($inBytes, 0, $inBytes.Length)
-    $proc.StandardInput.Close()
-    $stderr = $proc.StandardError.ReadToEnd()
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    # Drain stderr on a background task: a synchronous ReadToEnd after the write would
+    # deadlock if the child ever filled its (small) stderr buffer mid-transfer.
+    $errTask  = $proc.StandardError.ReadToEndAsync()
+    $srcTotal = (Get-Item -LiteralPath $srcAbs).Length
+    $chunk    = 3145728          # 3 MiB, divisible by 3
+    $buf      = [byte[]]::new($chunk)
+    $fs       = [IO.File]::OpenRead($srcAbs)
+    $sent     = [int64]0
+    try {
+        while (($read = $fs.Read($buf, 0, $chunk)) -gt 0) {
+            $inBytes = [System.Text.Encoding]::ASCII.GetBytes([Convert]::ToBase64String($buf, 0, $read))
+            $proc.StandardInput.BaseStream.Write($inBytes, 0, $inBytes.Length)
+            $sent += $read
+            if ($srcTotal -gt 50MB) {
+                Write-Progress -Activity "Copy-ToDistro $leaf" `
+                    -Status "$([math]::Round($sent/1MB)) / $([math]::Round($srcTotal/1MB)) MiB" `
+                    -PercentComplete ([int](100 * $sent / $srcTotal))
+            }
+        }
+        $proc.StandardInput.BaseStream.Flush()
+    } finally {
+        $fs.Dispose()
+        $proc.StandardInput.Close()
+    }
+    if ($srcTotal -gt 50MB) { Write-Progress -Activity "Copy-ToDistro $leaf" -Completed }
     $proc.WaitForExit()
+    $stderr = $errTask.Result
     if ($proc.ExitCode -ne 0) { throw "Failed to write $destLinux in ${Distro}: $stderr" }
 
     # 4. Verify the byte count matches the source.
