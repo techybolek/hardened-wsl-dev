@@ -25,6 +25,9 @@ security.ubuntu.com
 ppa.launchpad.net
 esm.ubuntu.com
 
+# Debian apt mirrors (Fastly-fronted; if it starts timing out, pin the edge /24 in allowed-ips.list)
+deb.debian.org
+
 # GitHub CLI updates
 cli.github.com
 
@@ -83,6 +86,7 @@ pkg-containers.githubusercontent.com
 
 # Playwright browser binaries (Edge channel via Akamai, Chromium snapshots via Google Cloud Storage)
 playwright.download.prss.microsoft.com
+cdn.playwright.dev
 storage.googleapis.com
 
 # Research / docs for ngx-material-timepicker lazy-loading investigation
@@ -147,9 +151,12 @@ mcr.microsoft.com
 api.openai.com
 openrouter.ai
 api.cerebras.ai
-# Fireworks AI (inference API + site/docs)
+# Fireworks AI (inference API + site/docs + web console)
 api.fireworks.ai
 fireworks.ai
+# app.fireworks.ai is Vercel-hosted (vercel-dns-013) and returns two rotating
+# A-records in different /24s -> /24s pinned in allowed-ips.list.
+app.fireworks.ai
 # pi.dev (Cloudflare-fronted — /24s in allowed-ips.list)
 pi.dev
 www.pi.dev
@@ -158,6 +165,9 @@ srv29.mikr.us
 # Yahoo IMAP (port 993). CNAMEs into *.yahoodns.net and returns two A records in
 # different /24s that reorder per query — /24s pinned in allowed-ips.list.
 imap.mail.yahoo.com
+# Yahoo SMTP (ports 465/587). CNAMEs into smtp.mail.global.gm0.yahoodns.net;
+# /24 pinned in allowed-ips.list for the same reordering reason as IMAP.
+smtp.mail.yahoo.com
 www.recovery.pr.gov
 dev.recovery.pr.gov
 devarcgis.recovery.pr
@@ -188,3 +198,28 @@ api.vercel.com
 
 # timesheet - clipboard.js
 cdnjs.cloudflare.com
+
+# SharePoint Online / Excel for the web (CGI tenant).
+# Minimal set — validated against Microsoft's published M365 endpoint list
+# (endpoints.office.com, SharePoint id=31 / Entra id=56). Deliberately omits
+# login.live.com (consumer MSA, not used by a work tenant),
+# static.sharepointonline.com (NXDOMAIN) and spoprod-a.akamaihd.net (legacy).
+groupecgi-my.sharepoint.com   # OneDrive for Business
+groupecgi.sharepoint.com      # team sites
+login.microsoftonline.com     # Entra auth
+login.microsoft.com           # Entra auth (modern alias)
+# Login-page + Office-web-apps assets. These are Akamai-fronted and fall OUTSIDE
+# the Microsoft CIDRs below — expect edge rotation and /24 pins in allowed-ips.list.
+aadcdn.msftauth.net
+aadcdn.msauth.net
+res.cdn.office.net
+shellprod.msocdn.com
+
+# quai.io (single stable A record 94.130.73.200, Hetzner — no CDN pin needed)
+quai.io
+www.quai.io
+
+# altstars.duckdns.org -- dynamic DNS for the home network (public IP
+# 80.49.210.251 at 2026-08-29). Re-resolved on every init-firewall.sh run; if it
+# stops working after the ISP rotates the IP, just rerun the script.
+altstars.duckdns.org

@@ -7,6 +7,33 @@
 
 # Project DB server (reachable via Windows-host VPN)
 172.23.7.5
+172.23.7.6
+
+# Fastly edge /24s fronting deb.debian.org (and the debian.map.fastly.net pool).
+# 2026-08-31: boot-time resolve pinned ...2/66/130/194.217 but the client was being
+# steered to ...2/66/130/194.132 — same four /24s, rotated last octet — so apt failed
+# with an instant REJECT on IPv4 and then printed misleading "Network is unreachable"
+# IPv6 errors. Pin the /24s so last-octet rotation inside the pool cannot break apt.
+151.101.2.0/24
+151.101.66.0/24
+151.101.130.0/24
+151.101.194.0/24
+
+# Local LAN Windows box on the home Wi-Fi (192.168.1.0/24). Reached via WSL2 NAT
+# through the Windows host, which is on the same LAN. Single host only -- do NOT
+# widen to the /24: that would open the whole home network to the isolated distro.
+192.168.1.102
+
+# Microsoft 365 — deliberately NARROW. Microsoft publishes five SharePoint
+# ranges (13.107.136.0/22, 40.108.128.0/17, 52.104.0.0/14, 104.146.128.0/17,
+# 150.171.40.0/22 = ~330k addresses serving *every* tenant worldwide, i.e. a
+# ready-made exfil path). Only the smallest is pinned; the CGI tenant front-end
+# resolves inside it. Widen only if Excel-for-the-web actually breaks.
+13.107.136.0/22          # SharePoint Online front-end (M365 endpoint id=31)
+# Entra ID auth endpoints (id=56) — identity only, no file storage.
+20.190.128.0/18
+40.126.0.0/18
+20.20.32.0/19
 
 # Azure Front Door edge pool that fronts code.visualstudio.com (rotates IPs in /24)
 150.171.110.0/24
@@ -42,17 +69,41 @@
 104.18.6.0/24
 104.18.7.0/24
 
+# Vercel edge /24s fronting app.fireworks.ai (Fireworks web console, CNAME into
+# *.vercel-dns-013.com). Two A-records that rotate; pin the /24s. Also covers
+# vercel.com, which currently lands in the same 64.239.109.0/24 pool.
+64.239.109.0/24
+64.239.123.0/24
+
 # Cloudflare edge /24s fronting pi.dev / www.pi.dev. Anycast — pin the /24s.
 104.21.62.0/24
 172.67.221.0/24
 
 # Yahoo IMAP (imap.mail.yahoo.com → jimapinternal.imap.mail.g03.yahoodns.net).
-# Two A records live in separate Yahoo /24s and reorder per query; the pool is
-# larger than what any single resolve returns, so pin both /24s rather than the
-# A-records. Reached on 993/tcp — the OUTPUT allow rule is destination-IP only
-# and does not filter by port, so no extra port rule is needed.
+# The pool is larger than what any single resolve returns and varies BY RESOLVER,
+# so pin the /24s rather than the A-records. Reached on 993/tcp — the OUTPUT allow
+# rule is destination-IP only and does not filter by port, so no extra port rule.
+#
+# 2026-08-31: Yahoo ADDED two /24s. The distro resolver and 1.1.1.1/9.9.9.9 now
+# return only the 98.x pair, while 8.8.8.8 still returns all four:
+#   8.8.8.8 -> 98.136.96.39  98.137.156.39  67.195.176.151  69.147.112.172
+#   1.1.1.1 -> 98.137.156.39 98.136.96.39
+# The 67./69. pins matched nothing the client was being steered to, which broke
+# IMAP poll while SMTP kept working (its 66.163.170.0/24 pin was still current).
+# Keep all four: the older two are still live in the pool, just not handed out here.
 67.195.176.0/24
 69.147.112.0/24
+98.137.156.0/24
+98.136.96.0/24
+
+# Yahoo SMTP (smtp.mail.yahoo.com → smtp.mail.global.gm0.yahoodns.net).
+# Pool spans two /24s and varies by resolver (2026-08-11: 8.8.8.8 → 66.218.88.167
+# + 66.163.170.52; 1.1.1.1 and 9.9.9.9 → 66.163.170.52 only). A bare hostname
+# pins whichever single A record boot happened to get, so send works some boots
+# and hangs on others — pin both /24s, same as Yahoo IMAP above. Reached on
+# 465/587 tcp; the OUTPUT allow rule is destination-IP only, no port rule needed.
+66.218.88.0/24
+66.163.170.0/24
 
 # Cloudflare edge /24s fronting hub.ag3nts.org (AI agents course platform).
 104.21.63.0/24
@@ -93,3 +144,17 @@
 16.15.34.0/24
 16.15.38.0/24
 3.5.84.0/24
+
+# altstars.duckdns.org -- dynamic-DNS name for the home network's public IP
+# (80.49.210.251 as of 2026-08-29, Orange PL). Pinned as an IP as well as being
+# listed in allowed-domains.list: DuckDNS is *dynamic*, so a residential-IP
+# change silently breaks it until init-firewall.sh is rerun (which re-resolves
+# the domain). Same network as the LAN entry 192.168.1.102 above.
+80.49.210.251
+
+# PR Deployment boxes
+172.23.6.12
+172.23.5.26
+# Production - off by default
+#172.23.3.7
+#172.23.2.4
