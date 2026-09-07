@@ -51,6 +51,7 @@ api.jina.ai
 
 # Stripe
 api.stripe.com
+stripecli-ws-nw.stripe.com # Stripe CLI `listen` websocket (AWS us-west-2 ELB pool; re-resolved each run)
 docs.stripe.com           # Stripe security/Checkout/Portal docs
 
 # Docs sites (CDN-fronted — see CDN CIDR caveat in README)
@@ -223,3 +224,6 @@ www.quai.io
 # 80.49.210.251 at 2026-08-29). Re-resolved on every init-firewall.sh run; if it
 # stops working after the ISP rotates the IP, just rerun the script.
 altstars.duckdns.org
+
+#DW prod
+prddbdata02.recovery.pr
