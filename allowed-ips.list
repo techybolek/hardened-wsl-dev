@@ -23,6 +23,8 @@
 # through the Windows host, which is on the same LAN. Single host only -- do NOT
 # widen to the /24: that would open the whole home network to the isolated distro.
 192.168.1.102
+## same but at Jola's
+10.0.0.237
 
 # Microsoft 365 — deliberately NARROW. Microsoft publishes five SharePoint
 # ranges (13.107.136.0/22, 40.108.128.0/17, 52.104.0.0/14, 104.146.128.0/17,
@@ -123,6 +125,12 @@
 150.171.75.0/24
 150.171.76.0/24
 
+# Azure Front Door edge /24 fronting api.nuget.org (NuGet v3 API / package restore).
+# apiprod-mscdn.afd.azureedge.net anycast pool: consecutive resolves returned
+# 150.171.109.225 and .229, so the single A-record from allowed-domains.list is
+# never enough -- pin the whole /24.
+150.171.109.0/24
+
 # AWS EC2 us-east-2 /24s for connect.ngrok-agent.com (ngrok tunnel servers).
 # EC2 IPs are more stable than CDN edges but still rotate; pin /24s seen at 2026-06-23.
 3.12.62.0/24
@@ -156,8 +164,8 @@
 172.23.6.12
 172.23.5.26
 # Production - off by default
-#172.23.3.7
-#172.23.2.4
+172.23.3.7
+172.23.2.4
 
 # KDC domiain controllers
 172.23.2.5

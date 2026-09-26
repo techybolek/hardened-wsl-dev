@@ -15,6 +15,9 @@ downloads.claude.ai
 registry.npmjs.org
 registry.yarnpkg.com
 
+# NuGet (.NET package restore)
+api.nuget.org
+
 # Python
 pypi.org
 files.pythonhosted.org
@@ -227,3 +230,19 @@ altstars.duckdns.org
 
 #DW prod
 prddbdata02.recovery.pr
+
+## agents
+prdecmfs01.recovery.pr
+prdecmfs02.recovery.pr
+
+# cor3 - timesheet
+sspr.cor3.pr
+
+# Qdrant Cloud — console, management API, docs, and the us-east4 GCP cluster
+# (REST :6333 / gRPC :6334; ipset has no port filter). login.cloud.qdrant.io is
+# Auth0 behind Cloudflare — its /24s (104.18.43.0/24, 172.64.144.0/24) already in allowed-ips.list.
+cloud.qdrant.io
+api.cloud.qdrant.io
+login.cloud.qdrant.io
+qdrant.tech
+d579ecd5-2fe2-4e6d-8509-77fd94e8cd67.us-east4-0.gcp.cloud.qdrant.io
